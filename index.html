@@ -13,7 +13,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <style>
-html, body { margin: 0; padding: 0; background: #0b0e12; min-height: 100%; }
+html, body { margin: 0; padding: 0; background: #0A0D12; min-height: 100%; }
 body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 #root { min-height: 100vh; }
 </style>
@@ -6137,6 +6137,11 @@ window.addEventListener("message", (e) => {
           color: var(--chalk);
           display: flex;
           flex-direction: column;
+        }
+        /* On a phone the game is the whole screen: no frame, border or outer margin. */
+        @media (max-width: 500px) {
+          .ffh-stage { padding: 0; background: var(--void); }
+          .ffh-device { max-width: none; min-height: 100vh; min-height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
         }
         .ffh-screen-transition {
           flex: 1;
