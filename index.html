@@ -7046,7 +7046,12 @@ window.addEventListener("message", (e) => {
           overflow: hidden;
           display: block;
         }
+        /* the filled half sits exactly on the outline (an inline svg would drop to the text baseline) */
         .ffh-star-half-mask svg {
+          display: block;
+          position: absolute;
+          top: 0;
+          left: 0;
           flex-shrink: 0;
         }
 
