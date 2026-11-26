@@ -16,7 +16,43 @@
 html, body { margin: 0; padding: 0; background: #0A0D12; min-height: 100%; }
 body { padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 #root { min-height: 100vh; }
+#fnf-upd { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 10px); transform: translateX(-50%); z-index: 2147483000;
+  display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 16px; border-radius: 12px; background: #151B24;
+  border: 1px solid #C6A15B; color: #EDEAE1; font: 600 15px/1.2 system-ui, -apple-system, sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: nowrap; }
+#fnf-upd button { font: inherit; color: #0A0D12; background: #C6A15B; border: 0; border-radius: 8px; padding: 9px 14px; min-height: 40px; }
 </style>
+<script>
+// Offline + updates (see sw.js). Only on a real web host, never inside a preview.
+(function () {
+  if (!("serviceWorker" in navigator) || (location.protocol !== "https:" && location.hostname !== "localhost")) return;
+  var reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (reloading) return; reloading = true; location.reload();
+  });
+  function offer(w) {
+    if (!w || document.getElementById("fnf-upd")) return;
+    var d = document.createElement("div"); d.id = "fnf-upd"; d.setAttribute("role", "status");
+    d.innerHTML = 'New version ready <button type="button">Update</button>';
+    d.querySelector("button").onclick = function () { this.textContent = "Updating..."; w.postMessage("fnf-update"); };
+    (document.body || document.documentElement).appendChild(d);
+  }
+  // not on "load": that waits for the fonts, which never arrive offline
+  document.addEventListener("DOMContentLoaded", function () {
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (reg) {
+      // only offer an update when an older copy is already running (not on the very first visit)
+      if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+      reg.addEventListener("updatefound", function () {
+        var w = reg.installing;
+        w && w.addEventListener("statechange", function () {
+          if (w.state === "installed" && navigator.serviceWorker.controller) offer(w);
+        });
+      });
+      // look for a new upload whenever the app comes back to the front
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) reg.update().catch(function () {}); });
+    }).catch(function () {});
+  });
+})();
+</script>
 </head>
 <body>
 <div id="root"></div>
