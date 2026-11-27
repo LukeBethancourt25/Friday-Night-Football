@@ -1098,9 +1098,9 @@ function updateBlocks(dt) {
       gx = target.x - d.x; gy = target.y - d.y;
       // an edge rusher drives the tackle up the arc: straight back past the quarterback's
       // shoulder to his depth, then turns the corner
-      if (edge && d.y > target.y + 0.2) {
+      if (edge && d.y > target.y + 1.2) {
         const side = d.x >= target.x ? 1 : -1;
-        gx = target.x + side * 3.0 - d.x; gy = target.y - 0.6 - d.y;
+        gx = target.x + side * 3.0 - d.x; gy = target.y + 0.4 - d.y;
       }
     } else {
       // run blocking: blocker steers the defender away from the carrier's lane
@@ -1115,7 +1115,7 @@ function updateBlocks(dt) {
     // the speed rush: an end running the arc walks the tackle back much faster than a bull rush inside
     // (only on the way up the arc: once he's level with the quarterback the tackle has run out of
     // room to give, and turning the corner is a fight again)
-    if (edge && d.y > target.y + 0.2) rate += clamp(3.8 + (d.a.SPD - o.a.SPD) * 0.05 + diff * 0.02, 2.2, 5.0) * CFG.rush;
+    if (edge && d.y > target.y + 1.2) rate += clamp(3.2 + (d.a.SPD - o.a.SPD) * 0.05 + diff * 0.02, 1.8, 4.4) * CFG.rush;
     // the pass set: a lineman gives ground on purpose until he's at his set depth, carrying the rusher with him
     if (passPro && o.isOL && o.setDepth && G.t < 1.6) {
       const gap = o.y - (G.ballOn - o.setDepth);
