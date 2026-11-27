@@ -1962,19 +1962,25 @@ function resolveCatch() {
   // the better his coverage rating, the more often he breaks it up or picks it
   // a lob hangs: a defender closing on it from a couple of yards can still get there
   // (he plays it as if he were closer, up to a yard and a bit)
+  // A long, high lob gives a defender who is ON TOP of the route (deeper than where it
+  // comes down) time to read it and get there; one trailing the receiver doesn't get that.
   const hang = b.style === "lob" && b.T > 1.2;
-  const reach = hang ? 2.5 : 1.8;
+  const onTop = D && D.y > b.y + 0.3;
+  const long = hang && b.T > 2 && onTop;
+  const reach = long ? 3.0 : hang ? 2.5 : 1.8;
   if (D && dd < reach) {
     const lead = (R ? dr : 3) - dd;                       // > 0: he's nearer the ball than the receiver
     const cov = Math.max(D.a.MCV, D.a.ZCV);
-    const de = hang ? Math.max(0, dd - 0.85) : dd;
+    const de = hang ? Math.max(0, dd - (long ? 1.2 : 0.85)) : dd;
     let pPlay = 0.7 - de * 0.32 + Math.max(0, lead) * 0.3 + (cov - 65) / 150 + (D.a.AWR - 65) / 300;
+    if (long) pPlay += 0.1;
     // trailing well behind a receiver who's on the ball, he rarely gets a hand on it
     if (lead < -1) pPlay *= 0.55;
     // a ball nobody's on: whoever is right there gets it
     if ((!R || dr > 1.45) && dd < 1.5) pPlay = Math.max(pPlay, dd < 1.0 ? 0.8 : 0.45);
     if (rand() < clamp(pPlay, 0.05, 0.92)) {
-      const pInt = clamp((lead > 0.5 ? 0.42 : lead > 0 ? 0.26 : 0.11) + (D.a.CTH - 55) / 200 + (cov - 70) / 300, 0.08, 0.8);
+      // a ball he has to go get from a ways off is usually knocked down, not caught
+      const pInt = clamp(((lead > 0.5 ? 0.42 : lead > 0 ? 0.26 : 0.11) + (D.a.CTH - 55) / 200 + (cov - 70) / 300) * (dd > 1.5 ? 0.5 : dd > 1 ? 0.75 : 1) * (hang ? 0.65 : 1), 0.04, 0.8);
       // both go up for it
       if (R && dr < 2) setFx(R, b.z > 1.7 ? "jump" : "reach", 0.45);
       setFx(D, b.z > 1.6 || dd > 0.9 ? "jump" : "reach", 0.45, D.x < b.x ? 1 : -1);
