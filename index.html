@@ -1099,7 +1099,12 @@ function updateBlocks(dt) {
     }
     const gl = Math.hypot(gx, gy) || 1;
     // pass pro: the rush walks the line back into the quarterback, so the pocket shrinks as the play goes on
-    const rate = passPro ? clamp(0.6 + diff * 0.032 + Math.min(0.25, o.engT * 0.08), 0.15, 1.5) * CFG.rush : clamp(0.45 + Math.abs(diff) * 0.02, 0.2, 1.1);
+    let rate = passPro ? clamp(0.6 + diff * 0.032 + Math.min(0.25, o.engT * 0.08), 0.15, 1.5) * CFG.rush : clamp(0.45 + Math.abs(diff) * 0.02, 0.2, 1.1);
+    // the pass set: a lineman gives ground on purpose until he's at his set depth, carrying the rusher with him
+    if (passPro && o.isOL && o.setDepth && G.t < 1.6) {
+      const gap = o.y - (G.ballOn - o.setDepth);
+      if (gap > 0) rate += clamp(gap * 2.6, 0, 2.6);
+    }
     const vx = (gx / gl) * rate, vy = (gy / gl) * rate;
     d.vx = vx; d.vy = vy; o.vx = vx; o.vy = vy;
     d.x += vx * dt; d.y += vy * dt;
@@ -1116,6 +1121,19 @@ function updateBlocks(dt) {
     // won the get-off: through the gap, blocker left stumbling
     if (d.winAt && G.t >= d.winAt) { d.winAt = null; release(o, d, false); o.stunT = 0.4; d.penUntil = G.t + 0.7; rushMove(o, d, false, diff, true); return; }
     if (G.carrier && dist(d, G.carrier) < 2.2) shed *= 2.6;
+    // leverage: a blocker only holds a man he's between and the ball. When the play goes the
+    // other way (a cutback behind him, the QB stepping up on his far shoulder) the defender
+    // just comes off the block.
+    {
+      const tg = G.carrier || (G.play.type !== "pass" && G.runner) || G.qb;
+      const tx = tg.x - d.x, ty = tg.y - d.y, tl = Math.hypot(tx, ty) || 1;
+      const bx = o.x - d.x, by = o.y - d.y, bl = Math.hypot(bx, by) || 1;
+      const lev = (tx * bx + ty * by) / (tl * bl);        // 1: squarely in the way, below 0: he's on the wrong side
+      if (o.engT > 0.3 && tl < 14 && !G.play.kr) {
+        if (lev < -0.15) shed = Math.max(shed, 6);
+        else if (lev < 0.3) shed = Math.max(shed * 3, 1.2);
+      }
+    }
     // open-field blocks on a return don't hold like a lineman's down block: the cover man
     // fights off it (sooner the better he sheds and the closer the ball gets)
     if (G.play.kr) {
@@ -1530,11 +1548,24 @@ function updateDefense(dt) {
   const los = G.ballOn;
   if (G.cv && !G.carrier && G.ball.state !== "air") coverageThink(dt);
   // the quarterback takes off for the line: the defense sees it (sharper players sooner)
-  const qb = G.qb, scrUp = new Set();
-  const scr = qb && G.play && G.play.type === "pass" && !G.carrier && !G.thrown && !qb.down && qb.state === "set" &&
-    qb.vy > 1.5 && qb.y > los - 4.5 && G.ball.state !== "air";
+  const qb = G.qb, scrUp = new Set(), scrAtk = new Set();
+  const live = qb && G.play && G.play.type === "pass" && !G.carrier && !G.thrown && !qb.down && qb.state === "set" && G.ball.state !== "air";
+  // out of the pocket (outside the tackles) or stepping up toward the line
+  const outPocket = live && Math.abs(qb.x - G.ballX) > 4.8 && Math.hypot(qb.vx, qb.vy) > 1.5;
+  const forward = live && qb.vy > 1.5 && qb.y > los - 4.5;
+  const scr = outPocket || forward;
   G.scrT = scr ? (G.scrT || 0) + dt : 0;
   if (scr) {
+    // linebackers with nobody to cover (no receiver in their zone, their man stayed in to block,
+    // a rat or a spy) go get him; so does any underneath defender with no one near him
+    G.def.forEach((d) => {
+      if (d.state !== "cover" || d.eng || d.down || !d.role) return;
+      if (G.scrT < 0.3 - (d.a.AWR - 60) / 220) return;
+      const lb = /LB/.test(d.slot);
+      const manFree = d.role.t === "man" && d.role.r && (d.role.r.rc === "block" || d.role.r.state === "block");
+      const zoneFree = (PM_UNDER[d.role.job] || d.role.job === "rat") && (!d.carry || dist(d.carry, d) > 7) && !pmShadowFree(d);
+      if ((lb && (manFree || zoneFree || d.role.job === "rat")) || (zoneFree && dist(d, qb) < 10)) scrAtk.add(d);
+    });
     // the closest underneath defenders (a hook, a rat, a man whose back stayed in to block) come up to fill
     const near = qb.y > los - 1.8 ? 2 : 1;
     G.def.filter((d) => d.state === "cover" && !d.eng && !d.down && d.role &&
@@ -1592,6 +1623,12 @@ function updateDefense(dt) {
         break;
       }
       case "cover":
+        if (scrAtk.has(d)) {
+          // attack: take the angle to cut him off, from the inside out
+          const f = pmIntercept(d, qb, 0.08, 0.8);
+          steerTo(d, clamp(f.x, 1, FW - 1), Math.max(f.y, qb.y - 1.5), dt, 1, 0.05);
+          break;
+        }
         if (scrUp.has(d)) {
           // fill at the line in front of him; don't overrun it (he can still throw)
           steerTo(d, clamp(qb.x + qb.vx * 0.45, 1, FW - 1), Math.max(los + 0.8, Math.min(d.y, qb.y + 2.2)), dt, 1, 0.15);
