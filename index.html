@@ -1115,7 +1115,7 @@ function updateBlocks(dt) {
     // the speed rush: an end running the arc walks the tackle back much faster than a bull rush inside
     // (only on the way up the arc: once he's level with the quarterback the tackle has run out of
     // room to give, and turning the corner is a fight again)
-    if (edge && d.y > target.y + 1.2) rate += clamp(3.2 + (d.a.SPD - o.a.SPD) * 0.05 + diff * 0.02, 1.8, 4.4) * CFG.rush;
+    if (edge && d.y > target.y + 1.2) rate += clamp(1.5 + (d.a.SPD - o.a.SPD) * 0.035 + diff * 0.012, 0.8, 2.4) * CFG.rush;
     // the pass set: a lineman gives ground on purpose until he's at his set depth, carrying the rusher with him
     if (passPro && o.isOL && o.setDepth && G.t < 1.6) {
       const gap = o.y - (G.ballOn - o.setDepth);
