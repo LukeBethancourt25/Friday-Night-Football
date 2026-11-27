@@ -9,7 +9,7 @@
  * upload the next time it checks. The new copy downloads in the background and
  * waits; the game shows "New version ready" and switches when the player taps it.
  */
-const VERSION = "9eba7512baab";
+const VERSION = "b58e33e89146";
 const APP = "fnf-app-" + VERSION;
 const FONTS = "fnf-fonts"; // kept across versions
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
